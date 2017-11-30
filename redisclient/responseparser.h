@@ -88,11 +88,18 @@ namespace redis_client
 		ResponseParser GetValueArrayObjectAt(size_t index) throw();
 		size_t GetValueArrayLength() throw();
 
-		const ResponseParser& operator[](size_t index) throw();
+		ResponseParser operator[](size_t index) throw();
 
-		static ResponseParser& ParseResponse(const string &resp);
+		static ResponseParser ParseResponse(const string &resp);
 		// if return 0, means content not available, or it ready for parse
 		static int CheckContentIsAvailableForParse(const string &content);
+
+		ResponseParser(const string &resp);
+		ResponseParser(const ResponseData &resp);
+		ResponseParser(const ResponseData &resp, int startindex, size_t len);
+		virtual ~ResponseParser();
+		ResponseParser& operator=(const ResponseParser &parser);
+
 	private:
 		void DoTypeParse() throw();
 		void DoParse() throw();
@@ -107,11 +114,6 @@ namespace redis_client
 		static ParseResult ParseBulkStringLength(const char *str, size_t len, size_t *parsedlen, int *contentlen);
 		static ParseResult ParseArrayLength(const char *str, size_t len, size_t *parsedlen, int *arraylen, size_t *contentlen, std::vector<int> *indexs);
 
-		ResponseParser(const string &resp);
-		ResponseParser(const ResponseData &resp);
-		ResponseParser(const ResponseData &resp, int startindex, size_t len);
-		virtual ~ResponseParser();
-		ResponseParser& operator=(const ResponseParser &parser) = delete;
 
 		static const char kRedisProtocolPrefixSimpleString;
 		static const char kRedisProtocolPrefixError;

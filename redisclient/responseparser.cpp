@@ -1,4 +1,4 @@
-
+﻿
 
 #include "responseparser.h"
 
@@ -33,9 +33,8 @@ inline size_t redis_client::ResponseData::GetLen()
 	return mLen;
 }
 
-redis_client::ResponseData::ResponseData(const string & content)
+redis_client::ResponseData::ResponseData(const string & content) : ResponseData ( content, 0, content.size())
 {
-	ResponseData(content, 0, content.size());
 }
 
 redis_client::ResponseData::ResponseData(const string & content, int startindex, size_t len)
@@ -47,9 +46,8 @@ redis_client::ResponseData::ResponseData(const string & content, int startindex,
 	mLen = len;
 }
 
-redis_client::ResponseData::ResponseData(const ResponseData & data)
+redis_client::ResponseData::ResponseData(const ResponseData & data) : ResponseData(data, data.mStartIndex, data.mLen)
 {
-	ResponseData(data, data.mStartIndex, data.mLen);
 }
 
 redis_client::ResponseData::ResponseData(const ResponseData & data, int startindex, int len)
@@ -66,8 +64,12 @@ redis_client::ResponseData & redis_client::ResponseData::operator=(const Respons
 {
 	if (this == &data)
 		return *this;
-	if (mData != nullptr && mData == data.mData)
+	if (mData != nullptr && mData == data.mData) {
+		mStartIndex = data.mStartIndex;
+		mLen = data.mLen;
 		return *this;
+	}
+		
 	if (mData != nullptr) {
 		mData->refcount--;
 		if (0 == mData->refcount) {
@@ -84,6 +86,8 @@ redis_client::ResponseData & redis_client::ResponseData::operator=(const Respons
 	if (mData != nullptr) {
 		mData->refcount++;
 	}
+	mStartIndex = data.mStartIndex;
+	mLen = data.mLen;
 
 	return *this;
 }
@@ -103,14 +107,14 @@ redis_client::ResponseData::~ResponseData()
 	}
 }
 
-redis_client::ResponseParser::Type redis_client::ResponseParser::GetType()
+redis_client::ResponseParser::Type redis_client::ResponseParser::GetType() throw()
 {
 	if (!mTypeParsed)
 		DoTypeParse();
 	return mType;
 }
 
-int64_t redis_client::ResponseParser::GetValueInteger()
+int64_t redis_client::ResponseParser::GetValueInteger() throw()
 {
 	if (!mParsed)
 		DoParse();
@@ -122,7 +126,7 @@ int64_t redis_client::ResponseParser::GetValueInteger()
 	}
 }
 
-std::string& redis_client::ResponseParser::GetValueString()
+std::string& redis_client::ResponseParser::GetValueString() throw()
 {
 	if (!mParsed)
 		DoParse();
@@ -141,7 +145,7 @@ std::string& redis_client::ResponseParser::GetValueString()
 	}
 }
 
-std::string & redis_client::ResponseParser::GetValueError()
+std::string & redis_client::ResponseParser::GetValueError() throw()
 {
 	return GetValueString();
 }
@@ -163,7 +167,7 @@ size_t redis_client::ResponseParser::GetValueArrayLength() throw()
 	}
 }
 
-const redis_client::ResponseParser & redis_client::ResponseParser::operator[](size_t index)
+redis_client::ResponseParser redis_client::ResponseParser::operator[](size_t index) throw()
 {
 	if (!mParsed)
 		DoParse();
@@ -177,7 +181,7 @@ const redis_client::ResponseParser & redis_client::ResponseParser::operator[](si
 	}
 }
 
-redis_client::ResponseParser& redis_client::ResponseParser::ParseResponse(const string & resp)
+redis_client::ResponseParser redis_client::ResponseParser::ParseResponse(const string & resp)
 {
 	return ResponseParser(resp);
 }
@@ -224,6 +228,7 @@ void redis_client::ResponseParser::DoTypeParse() throw()
 		else {
 			mType = kType_BulkString;
 		}
+		break;
 	case kRedisProtocolPrefixArrays:
 		if (len < 3)
 			throw RedisInvalidFormatException();
@@ -233,12 +238,13 @@ void redis_client::ResponseParser::DoTypeParse() throw()
 		else {
 			mType = kType_Array;
 		}
+		break;
 	default:
 		throw RedisInvalidFormatException();
 	}
 }
 
-void redis_client::ResponseParser::DoParse()
+void redis_client::ResponseParser::DoParse() throw()
 {
 	if (!mTypeParsed)
 		DoTypeParse();
@@ -261,6 +267,9 @@ void redis_client::ResponseParser::DoParse()
 		DoParseError();
 		break;
 	case redis_client::ResponseParser::kType_Nil:
+		break;
+	case redis_client::ResponseParser::kType_BulkString:
+		DoParseBulkString();
 		break;
 	default:
 		throw RedisInvalidFormatException();
@@ -295,7 +304,7 @@ void redis_client::ResponseParser::DoParseError() throw()
 	int startindex = mResponseData.GetIndex();
 	size_t len = mResponseData.GetLen();
 
-	size_t parsedlen;
+	size_t parsedlen = 0;
 	ParseResult ret = ParseSingleLineLength(content->data() + startindex, len, &parsedlen);
 
 
@@ -354,7 +363,7 @@ void redis_client::ResponseParser::DoParseBulkString() throw()
 		return;
 	}
 	
-	mData.str = new string(str + parsedlen - (contentlen + 2), contentlen);
+	mData.str = new string(str + startindex + parsedlen - (contentlen + 2), contentlen);
 }
 
 void redis_client::ResponseParser::DoParseArray() throw()
@@ -385,10 +394,10 @@ void redis_client::ResponseParser::DoParseArray() throw()
 	if (0 != arraylen) {
 		int index = indexs[0];
 		for (int i = 1; i < indexs.size(); i++) {
-			mData.array->push_back(ResponseData(mResponseData, index, indexs[i] - index));
+			mData.array->push_back(ResponseData(mResponseData, startindex + index, indexs[i] - index));
 			index = indexs[i];
 		}
-		mData.array->push_back(ResponseData(mResponseData, index, parsedlen - index));
+		mData.array->push_back(ResponseData(mResponseData, startindex + index, parsedlen - index));
 	}
 }
 
@@ -600,4 +609,14 @@ redis_client::ResponseParser::~ResponseParser()
 		delete mData.array;
 		mData.array = nullptr;
 	}
+}
+
+ResponseParser & redis_client::ResponseParser::operator=(const ResponseParser & parser)
+{
+	mData = parser.mData;
+	mResponseData = parser.mResponseData;
+	mType = parser.mType;
+	mParsed = parser.mParsed;
+	mTypeParsed = parser.mTypeParsed;
+	return (*this);
 }

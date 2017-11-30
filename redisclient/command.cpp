@@ -16,14 +16,26 @@ Command::Command()
 {
 }
 
-Command::Command(std::string & cmd)
+redis_client::Command::Command(Command & cmd)
 {
-	(*this) << cmd;
+	mArgs.assign(cmd.mArgs.begin(), cmd.mArgs.end());
 }
 
-Command::Command(const char * cmd)
+Command::Command(std::string & cmd)
 {
-	Command(std::string(cmd));
+	mArgs.push_back(cmd);
+}
+
+Command::Command(const char * cmd) : Command(std::string(cmd))
+{
+}
+
+Command redis_client::Command::operator=(Command & cmd)
+{
+	if (this == &cmd)
+		return *this;
+	mArgs.assign(cmd.mArgs.begin(), cmd.mArgs.end());
+	return *this;
 }
 
 Command::operator std::string()
