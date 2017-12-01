@@ -7,6 +7,9 @@
 *.userosscache
 *.sln.docstates
 
+redisclient/libs
+redisclient/obj
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

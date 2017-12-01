@@ -81,10 +81,10 @@ namespace redis_client
 		bool mTypeParsed;
 	public:
 		
-		ResponseParser::Type GetType();
+		ResponseParser::Type GetType() throw();
 		int64_t GetValueInteger() throw();
-		std::string& GetValueString() throw();
-		std::string& GetValueError() throw();
+		std::string GetValueString() throw();
+		std::string GetValueError() throw();
 		ResponseParser GetValueArrayObjectAt(size_t index) throw();
 		size_t GetValueArrayLength() throw();
 

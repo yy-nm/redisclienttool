@@ -20,7 +20,7 @@ namespace redis_client
 	public:
 		explicit Command();
 		Command(Command &cmd);
-		explicit Command(std::string &cmd);
+		explicit Command(const std::string &cmd);
 		explicit Command(const char *cmd);
 
 		Command operator=(Command &cmd);

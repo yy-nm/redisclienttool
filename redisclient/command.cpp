@@ -1,6 +1,6 @@
 
 
-#include "Command.h"
+#include "command.h"
 
 #include <sstream>
 
@@ -21,7 +21,7 @@ redis_client::Command::Command(Command & cmd)
 	mArgs.assign(cmd.mArgs.begin(), cmd.mArgs.end());
 }
 
-Command::Command(std::string & cmd)
+Command::Command(const std::string & cmd)
 {
 	mArgs.push_back(cmd);
 }

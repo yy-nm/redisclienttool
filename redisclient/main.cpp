@@ -3,6 +3,8 @@
 
 #include "responseparser.h"
 
+#include <string.h>
+
 #include <vector>
 #include <string>
 #include <set>
@@ -123,13 +125,7 @@ int main(void)
 	*/
 
 	// redis command test
-	//_initsocket();
-	WSADATA wsaData;
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != NO_ERROR) {
-		wprintf(L"WSAStartup function failed with error: %d\n", iResult);
-		return 1;
-	}
+	_initsocket();
 
 	const char *ip = "127.0.0.1";
 	short port = 6379;
@@ -170,7 +166,8 @@ int main(void)
 	size_t len;
 	//str = CommandHelper::Echo("hello world");
 	//str = CommandHelper::Ping();
-	str = CommandHelper::Del({ "12", "123", "1234" });
+	//str = CommandHelper::Del({ "12", "123", "1234" });
+	str = CommandHelper::Command();
 
 	ret = send(socketfd, str.c_str(), str.size(), 0);
 	if (ret == -1) {
@@ -180,17 +177,23 @@ int main(void)
 		return -1;
 	}
 
-	ret = recv(socketfd, buf, sizeof(buf), 0);
-	if (ret == -1) {
-		_close(socketfd);
-		_clearupsocket();
-		printf("socket recv err");
-		return -1;
-	}
-	len = ResponseParser::CheckContentIsAvailableForParse(string(buf, ret));
-	if (len > 0) {
-		ResponseParser &rp = ResponseParser::ParseResponse(string(buf, len));
-		printResult(rp);
+	std::string content;
+	while (true) {
+
+		ret = recv(socketfd, buf, sizeof(buf), 0);
+		if (ret == -1) {
+			_close(socketfd);
+			_clearupsocket();
+			printf("socket recv err");
+			return -1;
+		}
+		content = content + string(buf, ret);
+		len = ResponseParser::CheckContentIsAvailableForParse(content);
+		if (len > 0) {
+			ResponseParser rp = ResponseParser::ParseResponse(content.substr(0, len));
+			printResult(rp);
+			break;
+		}
 	}
 	
 

@@ -2,6 +2,9 @@
 
 #include "responseparser.h"
 
+#include <string.h>
+#include <stdexcept>
+
 
 const char redis_client::ResponseParser::kRedisProtocolPrefixSimpleString = '+';
 const char redis_client::ResponseParser::kRedisProtocolPrefixError = '-';
@@ -126,7 +129,7 @@ int64_t redis_client::ResponseParser::GetValueInteger() throw()
 	}
 }
 
-std::string& redis_client::ResponseParser::GetValueString() throw()
+std::string redis_client::ResponseParser::GetValueString() throw()
 {
 	if (!mParsed)
 		DoParse();
@@ -145,7 +148,7 @@ std::string& redis_client::ResponseParser::GetValueString() throw()
 	}
 }
 
-std::string & redis_client::ResponseParser::GetValueError() throw()
+std::string redis_client::ResponseParser::GetValueError() throw()
 {
 	return GetValueString();
 }
